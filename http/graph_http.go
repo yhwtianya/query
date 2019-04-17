@@ -20,6 +20,7 @@ type GraphHistoryParam struct {
 
 func configGraphRoutes() {
 
+	// 批量查询指标历史数据
 	// method:post
 	http.HandleFunc("/graph/history", func(w http.ResponseWriter, r *http.Request) {
 		// statistics
@@ -66,6 +67,7 @@ func configGraphRoutes() {
 		StdRender(w, data, nil)
 	})
 
+	// 获取指标属性及其rrd属性
 	// post, info
 	http.HandleFunc("/graph/info", func(w http.ResponseWriter, r *http.Request) {
 		// statistics
@@ -102,6 +104,7 @@ func configGraphRoutes() {
 		StdRender(w, data, nil)
 	})
 
+	// 获取指标最新数据,对于DERIVE和COUNTER类型的指标，为计算后的值
 	// post, last
 	http.HandleFunc("/graph/last", func(w http.ResponseWriter, r *http.Request) {
 		// statistics
@@ -141,6 +144,7 @@ func configGraphRoutes() {
 		StdRender(w, data, nil)
 	})
 
+	// 获取指标最新原始上报数据
 	// post, last/raw
 	http.HandleFunc("/graph/last/raw", func(w http.ResponseWriter, r *http.Request) {
 		// statistics

@@ -1,8 +1,9 @@
 package proc
 
 import (
-	nproc "github.com/toolkits/proc"
 	"log"
+
+	nproc "github.com/toolkits/proc"
 )
 
 // 统计指标的整体数据
@@ -26,6 +27,7 @@ func Start() {
 	log.Println("proc.Start, ok")
 }
 
+// 获取统计数据，统计http请求和响应信息
 func GetAll() []interface{} {
 	ret := make([]interface{}, 0)
 

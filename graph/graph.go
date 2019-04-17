@@ -28,21 +28,25 @@ var (
 	GraphNodeRing *rings.ConsistentHashNodeRing
 )
 
+// 初始化graph 哈希环和连接池
 func Start() {
 	initNodeRings()
 	initConnPools()
 	log.Println("graph.Start ok")
 }
 
+// 查询单指标历史数据
 func QueryOne(para cmodel.GraphQueryParam) (resp *cmodel.GraphQueryResponse, err error) {
 	start, end := para.Start, para.End
 	endpoint, counter := para.Endpoint, para.Counter
 
+	// 获取连接池
 	pool, addr, err := selectPool(endpoint, counter)
 	if err != nil {
 		return nil, err
 	}
 
+	// 获取连接
 	conn, err := pool.Fetch()
 	if err != nil {
 		return nil, err
@@ -62,6 +66,7 @@ func QueryOne(para cmodel.GraphQueryParam) (resp *cmodel.GraphQueryResponse, err
 	ch := make(chan *ChResult, 1)
 	go func() {
 		resp := &cmodel.GraphQueryResponse{}
+		// 转发到实际的graph进行查询
 		err := rpcConn.Call("Graph.Query", para, resp)
 		ch <- &ChResult{Err: err, Resp: resp}
 	}()
@@ -77,10 +82,12 @@ func QueryOne(para cmodel.GraphQueryParam) (resp *cmodel.GraphQueryResponse, err
 		} else {
 			pool.Release(conn)
 
+			// 没有值
 			if len(r.Resp.Values) < 1 {
 				return r.Resp, nil
 			}
 
+			// 修正数据
 			// TODO query不该做这些事情, 说明graph没做好
 			fixed := []*cmodel.RRDData{}
 			for _, v := range r.Resp.Values {
@@ -100,6 +107,7 @@ func QueryOne(para cmodel.GraphQueryParam) (resp *cmodel.GraphQueryResponse, err
 	}
 }
 
+// 获取指标及其rrd属性
 func Info(para cmodel.GraphInfoParam) (resp *cmodel.GraphFullyInfo, err error) {
 	endpoint, counter := para.Endpoint, para.Counter
 
@@ -153,6 +161,7 @@ func Info(para cmodel.GraphInfoParam) (resp *cmodel.GraphFullyInfo, err error) {
 	}
 }
 
+// 获取指标最新数据,对于DERIVE和COUNTER类型的指标，为计算后的值
 func Last(para cmodel.GraphLastParam) (r *cmodel.GraphLastResp, err error) {
 	endpoint, counter := para.Endpoint, para.Counter
 
@@ -198,6 +207,7 @@ func Last(para cmodel.GraphLastParam) (r *cmodel.GraphLastResp, err error) {
 	}
 }
 
+// 获取指标最新原始上报数据
 func LastRaw(para cmodel.GraphLastParam) (r *cmodel.GraphLastResp, err error) {
 	endpoint, counter := para.Endpoint, para.Counter
 
@@ -210,7 +220,6 @@ func LastRaw(para cmodel.GraphLastParam) (r *cmodel.GraphLastResp, err error) {
 	if err != nil {
 		return nil, err
 	}
-
 	rpcConn := conn.(spool.RpcClient)
 	if rpcConn.Closed() {
 		pool.ForceClose(conn)
@@ -243,6 +252,7 @@ func LastRaw(para cmodel.GraphLastParam) (r *cmodel.GraphLastResp, err error) {
 	}
 }
 
+// 从哈希环获取节点地址，根据节点地址从连接池管理器获取对应连接池
 func selectPool(endpoint, counter string) (rpool *spool.ConnPool, raddr string, rerr error) {
 	pkey := cutils.PK2(endpoint, counter)
 	node, err := GraphNodeRing.GetNode(pkey)
@@ -263,6 +273,7 @@ func selectPool(endpoint, counter string) (rpool *spool.ConnPool, raddr string, 
 	return pool, addr, nil
 }
 
+// 初始化graph rpc连接池
 // internal functions
 func initConnPools() {
 	cfg := g.Config()
@@ -270,12 +281,15 @@ func initConnPools() {
 	// TODO 为了得到Slice,这里做的太复杂了
 	graphInstances := nset.NewSafeSet()
 	for _, address := range cfg.Graph.Cluster {
+		// 地址去重
 		graphInstances.Add(address)
 	}
+	// 构建graph连接池管理器
 	GraphConnPools = spool.CreateSafeRpcConnPools(cfg.Graph.MaxConns, cfg.Graph.MaxIdle,
 		cfg.Graph.ConnTimeout, cfg.Graph.CallTimeout, graphInstances.ToSlice())
 }
 
+// 初始化graph节点哈希环
 func initNodeRings() {
 	cfg := g.Config()
 	GraphNodeRing = rings.NewConsistentHashNodesRing(cfg.Graph.Replicas, cutils.KeysOfMap(cfg.Graph.Cluster))

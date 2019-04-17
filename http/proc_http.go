@@ -14,11 +14,13 @@ func configProcHttpRoutes() {
 		RenderDataJson(w, proc.GetAll())
 	})
 
+	// 获取所有计数器信息
 	// counter
 	http.HandleFunc("/counter/all", func(w http.ResponseWriter, r *http.Request) {
 		RenderDataJson(w, proc.GetAll())
 	})
 
+	// 获取graph连接池计数器信息
 	// conn pools
 	http.HandleFunc("/proc/connpool", func(w http.ResponseWriter, r *http.Request) {
 		result := strings.Join(graph.GraphConnPools.Proc(), "\n")
